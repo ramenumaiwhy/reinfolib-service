@@ -58,6 +58,7 @@ def geocode(address: str) -> tuple[float, float]:
         GSI_GEOCODER_URL,
         params={"q": address},
         timeout=10,
+        allow_redirects=False,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -73,6 +74,7 @@ def reverse_geocode(lat: float, lon: float) -> tuple[str, str]:
         GSI_REVERSE_GEOCODER_URL,
         params={"lat": lat, "lon": lon},
         timeout=10,
+        allow_redirects=False,
     )
     resp.raise_for_status()
     result = resp.json()

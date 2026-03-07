@@ -548,11 +548,12 @@
     <h2>分析ツールを使ってみよう</h2>
     <p>
       Google Colab（Googleが提供する無料のプログラム実行環境）上で動きます。
-      あなたのGoogleアカウントの中で実行されるため、APIキーが外部に送信されることはありません。
+      あなたのGoogleアカウントの中で実行されるため、APIキーが開発者に送信されることはありません。
+      APIキーは安全な入力方式（getpass）で入力するため、ノートブックを保存・共有してもキーは残りません。
     </p>
 
     <div class="colab-box">
-      <p>下のボタンからノートブックを開いて、APIキーと住所を入力するだけ。</p>
+      <p>下のボタンからノートブックを開いて、「すべてのセルを実行」するだけ。APIキーは安全な入力欄に自動で案内されます。</p>
       <a href="https://colab.research.google.com/github/ramenumaiwhy/reinfolib-service/blob/main/reinfolib_checker.ipynb"
          target="_blank" rel="noopener" class="colab-btn">
         <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Colab">
@@ -566,11 +567,11 @@
         </div>
         <div class="colab-step">
           <div class="num">2</div>
-          <p>APIキーと住所を入力欄に記入</p>
+          <p>メニューの「ランタイム」→「すべてのセルを実行」をクリック</p>
         </div>
         <div class="colab-step">
           <div class="num">3</div>
-          <p>メニューの「ランタイム」→「すべてのセルを実行」をクリック</p>
+          <p>APIキーの入力欄が出るのでキーを貼り付けてEnter</p>
         </div>
       </div>
     </div>
