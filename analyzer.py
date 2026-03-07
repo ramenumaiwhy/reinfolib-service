@@ -12,8 +12,6 @@ import datetime
 import re
 import statistics
 import time
-from urllib.parse import quote
-
 import requests
 
 # ─── 定数 ─────────────────────────────────────────────────
@@ -103,6 +101,7 @@ def get_city_name(api_key: str, muni_cd: str) -> str | None:
         params={"area": pref_cd},
         headers={"Ocp-Apim-Subscription-Key": api_key},
         timeout=10,
+        allow_redirects=False,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -128,6 +127,7 @@ def fetch_transactions(
             params={"year": year, "city": muni_cd},
             headers={"Ocp-Apim-Subscription-Key": api_key},
             timeout=30,
+            allow_redirects=False,
         )
         resp.raise_for_status()
         result = resp.json()
