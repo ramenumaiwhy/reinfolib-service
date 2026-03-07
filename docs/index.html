@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不動産相場チェッカー - 住所を入れるだけで坪単価がわかる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF6F0;
+    --cream-dark: #F0EAE0;
+    --brown-deep: #3D2B1F;
+    --brown-warm: #6B4C3B;
+    --brown-light: #A0836C;
+    --terracotta: #C4704B;
+    --terracotta-soft: #D4916F;
+    --green-deep: #2B5940;
+    --green-soft: #4A8B6A;
+    --green-pale: #E8F2EC;
+    --gold: #C9A84C;
+    --gold-pale: #FBF5E4;
+    --shadow-sm: 0 2px 8px rgba(61,43,31,0.06);
+    --shadow-md: 0 4px 20px rgba(61,43,31,0.08);
+    --shadow-lg: 0 8px 40px rgba(61,43,31,0.12);
+    --radius: 12px;
+    --radius-lg: 20px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--brown-deep);
+    background: var(--cream);
+    line-height: 1.8;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ─── Background Texture ──────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(196,112,75,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(43,89,64,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── Container ───────────────────────────── */
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── Header ──────────────────────────────── */
+  header {
+    padding: 48px 0 20px;
+    text-align: center;
+  }
+
+  .header-badge {
+    display: inline-block;
+    background: var(--green-deep);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    padding: 5px 16px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+    animation: fadeDown 0.6s ease-out;
+  }
+
+  header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 900;
+    font-size: clamp(28px, 6vw, 44px);
+    line-height: 1.3;
+    color: var(--brown-deep);
+    margin-bottom: 16px;
+    animation: fadeDown 0.7s ease-out 0.1s both;
+  }
+
+  header h1 em {
+    font-style: normal;
+    color: var(--terracotta);
+  }
+
+  header .lead {
+    font-size: 16px;
+    color: var(--brown-warm);
+    max-width: 520px;
+    margin: 0 auto 32px;
+    font-weight: 300;
+    animation: fadeDown 0.7s ease-out 0.2s both;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--terracotta);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    padding: 16px 36px;
+    border-radius: 100px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(196,112,75,0.3);
+    animation: fadeDown 0.7s ease-out 0.3s both;
+  }
+  .hero-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(196,112,75,0.4);
+    background: #b5613e;
+  }
+  .hero-cta svg { width: 20px; height: 20px; }
+
+  /* ─── Section ─────────────────────────────── */
+  section {
+    margin-bottom: 56px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: var(--green-deep);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 700;
+    font-size: clamp(22px, 4vw, 30px);
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+
+  h3 {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  p { margin-bottom: 14px; }
+
+  /* ─── What You Learn Cards ────────────────── */
+  .features {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .feature-card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(61,43,31,0.04);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .feature-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .feature-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+  .feature-icon.tsubo { background: var(--gold-pale); }
+  .feature-icon.ikishu { background: var(--green-pale); }
+  .feature-icon.residual { background: #F5EBE0; }
+
+  .feature-card h3 {
+    font-size: 17px;
+    margin-bottom: 6px;
+  }
+  .feature-card p {
+    font-size: 14px;
+    color: var(--brown-warm);
+    margin-bottom: 0;
+    line-height: 1.7;
+  }
+
+  .feature-card .term {
+    display: inline-block;
+    background: var(--cream);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    color: var(--brown-light);
+    font-weight: 500;
+  }
+
+  /* ─── Steps ───────────────────────────────── */
+  .steps {
+    counter-reset: step;
+    margin-top: 24px;
+  }
+
+  .step {
+    counter-increment: step;
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 28px 28px 28px 80px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(61,43,31,0.04);
+    position: relative;
+    transition: transform 0.2s ease;
+  }
+  .step:hover { transform: translateX(4px); }
+
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 24px;
+    top: 26px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    color: #fff;
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .step h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .step p {
+    font-size: 14px;
+    color: var(--brown-warm);
+    margin-bottom: 0;
+  }
+  .step a {
+    color: var(--terracotta);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px dotted var(--terracotta-soft);
+    transition: border-color 0.2s;
+  }
+  .step a:hover { border-bottom-style: solid; }
+
+  .step .tip {
+    display: block;
+    margin-top: 10px;
+    background: var(--gold-pale);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--brown-warm);
+    line-height: 1.6;
+  }
+  .step .tip::before {
+    content: 'Tip';
+    font-weight: 700;
+    color: var(--gold);
+    margin-right: 6px;
+  }
+
+  /* connector line between steps */
+  .steps .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 43px;
+    bottom: -16px;
+    width: 2px;
+    height: 16px;
+    background: var(--cream-dark);
+  }
+
+  /* ─── How to Use (Colab) ──────────────────── */
+  .colab-box {
+    background: linear-gradient(135deg, #fff 0%, var(--gold-pale) 100%);
+    border: 2px solid rgba(201,168,76,0.2);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px;
+    text-align: center;
+    margin-top: 24px;
+  }
+
+  .colab-box p {
+    font-size: 15px;
+    color: var(--brown-warm);
+    max-width: 480px;
+    margin: 0 auto 20px;
+  }
+
+  .colab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #F9AB00;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 14px 32px;
+    border-radius: 100px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(249,171,0,0.25);
+  }
+  .colab-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(249,171,0,0.35);
+  }
+  .colab-btn img {
+    height: 22px;
+    width: auto;
+  }
+
+  .colab-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 28px;
+    text-align: left;
+  }
+  .colab-step {
+    background: rgba(255,255,255,0.7);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .colab-step .num {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 28px;
+    margin-bottom: 8px;
+  }
+  .colab-step p {
+    font-size: 14px;
+    margin: 0;
+    color: var(--brown-warm);
+  }
+
+  /* ─── Disclaimer ──────────────────────────── */
+  .disclaimer {
+    background: var(--cream-dark);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    font-size: 13px;
+    color: var(--brown-light);
+    line-height: 1.8;
+    border-left: 3px solid var(--brown-light);
+  }
+  .disclaimer strong {
+    color: var(--brown-warm);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  /* ─── Footer ──────────────────────────────── */
+  footer {
+    text-align: center;
+    padding: 32px 0 48px;
+    font-size: 13px;
+    color: var(--brown-light);
+  }
+  footer a {
+    color: var(--brown-warm);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--brown-light);
+  }
+
+  /* ─── Divider ─────────────────────────────── */
+  .divider {
+    width: 48px;
+    height: 3px;
+    background: var(--terracotta-soft);
+    border-radius: 2px;
+    margin: 48px auto;
+    opacity: 0.5;
+  }
+
+  /* ─── Animations ──────────────────────────── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── Responsive ──────────────────────────── */
+  @media (min-width: 640px) {
+    .features {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    header { padding: 72px 0 32px; }
+  }
+
+  @media (max-width: 480px) {
+    .step {
+      padding: 22px 20px 22px 68px;
+    }
+    .step::before {
+      left: 16px;
+      top: 20px;
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+    .steps .step:not(:last-child)::after {
+      left: 33px;
+    }
+    .colab-box { padding: 28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ─── Header ──────────────────────────── -->
+  <header>
+    <div class="header-badge">無料で使える国交省公式データ</div>
+    <h1>住所を入れるだけで<br><em>不動産の相場</em>がわかる</h1>
+    <p class="lead">
+      国土交通省が公開している実際の取引データをもとに、
+      土地の坪単価や建物の残存価値を自動で分析します。
+    </p>
+    <a href="#howto" class="hero-cta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+      使い方を見る
+    </a>
+  </header>
+
+  <div class="divider"></div>
+
+  <!-- ─── What You Learn ─────────────────── -->
+  <section class="reveal">
+    <div class="section-label">What You Get</div>
+    <h2>何がわかるの？</h2>
+    <p>3つの指標で、その土地の「相場感」がつかめます。</p>
+
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon tsubo">&#127969;</div>
+        <h3>坪単価</h3>
+        <p>土地1坪（約3.3m<sup>2</sup>）あたりの価格。「この辺の土地、坪いくら？」の答えがすぐにわかります。</p>
+        <span class="term">つぼたんか</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon ikishu">&#128202;</div>
+        <h3>一種単価</h3>
+        <p>容積率（何階建てまで建てられるかの割合）を加味した坪単価。条件が違う土地同士を公平に比較できます。</p>
+        <span class="term">いっしゅたんか</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon residual">&#128200;</div>
+        <h3>建物残価推定</h3>
+        <p>建物付きの取引から建物の価値を差し引いて、土地だけの価格を逆算。あくまで参考値です。</p>
+        <span class="term">たてものざんか</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── API Key Steps ──────────────────── -->
+  <section id="howto" class="reveal">
+    <div class="section-label">Step by Step</div>
+    <h2>まずはAPIキーを取得しよう</h2>
+    <p>
+      このツールは国土交通省のAPIを使います。
+      利用には<strong>APIキー</strong>（通行証のようなもの）が必要です。
+      無料で、数分で取得できます。
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <h3>不動産情報ライブラリにアクセス</h3>
+        <p>
+          <a href="https://www.reinfolib.mlit.go.jp/" target="_blank" rel="noopener">不動産情報ライブラリ</a>のトップページを開きます。
+          国土交通省が運営する、不動産取引データの公式サイトです。
+        </p>
+      </div>
+      <div class="step">
+        <h3>API利用申請フォームを開く</h3>
+        <p>
+          <a href="https://www.reinfolib.mlit.go.jp/api/request/" target="_blank" rel="noopener">API利用申請ページ</a>にアクセスし、
+          メールアドレスと利用目的を入力して送信します。
+        </p>
+        <span class="tip">利用目的は「不動産取引データの分析・研究」のような内容でOKです。</span>
+      </div>
+      <div class="step">
+        <h3>メールでAPIキーを受け取る</h3>
+        <p>
+          登録したメールアドレスにAPIキー（英数字の文字列）が届きます。
+          このキーをコピーしておきましょう。
+        </p>
+        <span class="tip">迷惑メールフォルダに入ることがあるので注意してください。</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── How to Use ─────────────────────── -->
+  <section class="reveal">
+    <div class="section-label">Let's Try</div>
+    <h2>分析ツールを使ってみよう</h2>
+    <p>
+      Google Colab（Googleが提供する無料のプログラム実行環境）上で動きます。
+      あなたのGoogleアカウントの中で実行されるため、APIキーが外部に送信されることはありません。
+    </p>
+
+    <div class="colab-box">
+      <p>下のボタンからノートブックを開いて、APIキーと住所を入力するだけ。</p>
+      <a href="https://colab.research.google.com/github/ramenumaiwhy/reinfolib-service/blob/main/reinfolib_checker.ipynb"
+         target="_blank" rel="noopener" class="colab-btn">
+        <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Colab">
+        ノートブックを開く
+      </a>
+
+      <div class="colab-steps">
+        <div class="colab-step">
+          <div class="num">1</div>
+          <p>上のボタンをクリックしてColabを開く</p>
+        </div>
+        <div class="colab-step">
+          <div class="num">2</div>
+          <p>APIキーと住所を入力欄に記入</p>
+        </div>
+        <div class="colab-step">
+          <div class="num">3</div>
+          <p>メニューの「ランタイム」→「すべてのセルを実行」をクリック</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── Disclaimer ─────────────────────── -->
+  <section class="reveal">
+    <div class="disclaimer">
+      <strong>ご注意・免責事項</strong>
+      このサービスは、国土交通省不動産情報ライブラリのAPI機能を使用していますが、
+      提供情報の最新性、正確性、完全性等が保証されたものではありません。<br>
+      建物込み取引の推定土地価格は、法定耐用年数に基づく簡易推定であり、
+      リフォーム・個別品質・設備は未考慮です。参考値としてご利用ください。<br>
+      不動産の売買にあたっては、必ず不動産鑑定士や宅地建物取引士等の専門家にご相談ください。
+    </div>
+  </section>
+
+  <!-- ─── Footer ─────────────────────────── -->
+  <footer>
+    <p>
+      不動産相場チェッカー &mdash;
+      <a href="https://github.com/ramenumaiwhy/reinfolib-service" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+
+</div>
+
+<script>
+// Scroll-triggered reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
