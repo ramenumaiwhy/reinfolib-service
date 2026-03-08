@@ -355,7 +355,7 @@
     transition: max-height 0.3s ease;
   }
   .detail-section.open { max-height: 4000px; }
-  .detail-section table { font-size: 12px; min-width: 700px; }
+  .detail-section table { font-size: 12px; min-width: 1400px; }
   .detail-section th { font-size: 11px; }
   .detail-section td { font-size: 12px; white-space: nowrap; }
 
@@ -779,7 +779,8 @@
         area_m2: areaM2,
         floor_area_ratio: floorAreaRatio,
         use_district: item.UseDistrict || '',
-        period: item.Period || ''
+        period: item.Period || '',
+        raw: item
       });
     }
     return results;
@@ -812,7 +813,8 @@
         use_district: item.UseDistrict || '',
         period: item.Period || '',
         structure: item.Structure || '',
-        building_year: item.BuildingYear || ''
+        building_year: item.BuildingYear || '',
+        raw: item
       });
     }
     return results;
@@ -894,6 +896,34 @@
     return Math.round(num / 10000).toLocaleString() + '万';
   }
 
+  // APIフィールド名 → 日本語ラベル（表示順）
+  var RAW_FIELD_LABELS = [
+    ['Type', '種類'],
+    ['TradePrice', '取引価格'],
+    ['Area', '面積(㎡)'],
+    ['UnitPrice', '㎡単価'],
+    ['FloorAreaRatio', '容積率(%)'],
+    ['CoverageRatio', '建ぺい率(%)'],
+    ['UseDistrict', '用途地域'],
+    ['CityPlanning', '都市計画'],
+    ['Period', '取引時点'],
+    ['Structure', '構造'],
+    ['BuildingYear', '建築年'],
+    ['TotalFloorArea', '延床面積(㎡)'],
+    ['FloorPlan', '間取り'],
+    ['LandShape', '土地の形状'],
+    ['Frontage', '間口(m)'],
+    ['Direction', '前面道路の方位'],
+    ['Classification', '前面道路の種類'],
+    ['Breadth', '前面道路の幅員(m)'],
+    ['Use', '利用現況'],
+    ['Purpose', '今後の利用目的'],
+    ['Renovation', '改装'],
+    ['Remarks', '備考']
+  ];
+  // 表示から除外（全行同じ値のため冗長）
+  var RAW_FIELD_SKIP = ['Prefecture', 'Municipality', 'DistrictName', 'Region', 'MunicipalityCode'];
+
   function renderDetailTable(container, details, isBuilding) {
     var section = createSafeElement('div');
     section.className = 'detail-section';
@@ -910,6 +940,27 @@
       toggleBtn.classList.toggle('open', isOpen);
     });
 
+    // 算出値カラムを先頭に配置
+    var calcHeaders = isBuilding
+      ? [['推定坪単価(万円)', 'tsubo_price'], ['一種単価(万円)', 'ikishu_price'], ['推定土地価格', 'estimated_land_price'], ['推定建物残価', 'building_value']]
+      : [['坪単価(万円)', 'tsubo_price'], ['一種単価(万円)', 'ikishu_price']];
+
+    // API生データのカラム: 定義済みラベル順 + 未知フィールドも拾う
+    var rawColumns = [];
+    var knownKeys = {};
+    for (var k = 0; k < RAW_FIELD_LABELS.length; k++) {
+      knownKeys[RAW_FIELD_LABELS[k][0]] = true;
+      rawColumns.push(RAW_FIELD_LABELS[k]);
+    }
+    // 未知フィールドを拾う（最初の1件から）
+    if (details.length > 0 && details[0].raw) {
+      for (var key in details[0].raw) {
+        if (!knownKeys[key] && RAW_FIELD_SKIP.indexOf(key) === -1) {
+          rawColumns.push([key, key]);
+        }
+      }
+    }
+
     var wrap = createSafeElement('div');
     wrap.className = 'table-wrap';
     wrap.style.marginTop = '12px';
@@ -917,15 +968,16 @@
     var thead = createSafeElement('thead');
     var headerRow = createSafeElement('tr');
 
-    var headers;
-    if (isBuilding) {
-      headers = ['時期', '取引価格', '面積(㎡)', '構造', '建築年', '推定土地価格', '推定坪単価(万円)', '容積率(%)', '用途地域'];
-    } else {
-      headers = ['時期', '取引価格', '面積(㎡)', '坪単価(万円)', '容積率(%)', '一種単価(万円)', '用途地域'];
+    // 算出値ヘッダー
+    for (var ch = 0; ch < calcHeaders.length; ch++) {
+      var th = createSafeElement('th', calcHeaders[ch][0]);
+      th.style.background = 'var(--gold-pale)';
+      th.style.color = 'var(--terracotta)';
+      headerRow.appendChild(th);
     }
-
-    for (var h = 0; h < headers.length; h++) {
-      headerRow.appendChild(createSafeElement('th', headers[h]));
+    // API生データヘッダー
+    for (var rh = 0; rh < rawColumns.length; rh++) {
+      headerRow.appendChild(createSafeElement('th', rawColumns[rh][1]));
     }
     thead.appendChild(headerRow);
     table.appendChild(thead);
@@ -935,26 +987,38 @@
 
     for (var i = 0; i < sorted.length; i++) {
       var d = sorted[i];
+      var raw = d.raw || {};
       var row = createSafeElement('tr');
 
-      if (isBuilding) {
-        row.appendChild(createSafeElement('td', d.period));
-        row.appendChild(createSafeElement('td', formatPrice(d.trade_price)));
-        row.appendChild(createSafeElement('td', d.area_m2.toFixed(0)));
-        row.appendChild(createSafeElement('td', d.structure));
-        row.appendChild(createSafeElement('td', d.building_year));
-        row.appendChild(createSafeElement('td', formatPrice(d.estimated_land_price)));
-        row.appendChild(createSafeElement('td', formatManYen(d.tsubo_price)));
-        row.appendChild(createSafeElement('td', d.floor_area_ratio > 0 ? String(d.floor_area_ratio) : '-'));
-        row.appendChild(createSafeElement('td', d.use_district || '-'));
-      } else {
-        row.appendChild(createSafeElement('td', d.period));
-        row.appendChild(createSafeElement('td', formatPrice(d.trade_price)));
-        row.appendChild(createSafeElement('td', d.area_m2.toFixed(0)));
-        row.appendChild(createSafeElement('td', formatManYen(d.tsubo_price)));
-        row.appendChild(createSafeElement('td', d.floor_area_ratio > 0 ? String(d.floor_area_ratio) : '-'));
-        row.appendChild(createSafeElement('td', d.ikishu_price != null ? formatManYen(d.ikishu_price) : '-'));
-        row.appendChild(createSafeElement('td', d.use_district || '-'));
+      // 算出値セル
+      for (var cc = 0; cc < calcHeaders.length; cc++) {
+        var field = calcHeaders[cc][1];
+        var val;
+        if (field === 'tsubo_price' || field === 'ikishu_price') {
+          val = d[field] != null ? formatManYen(d[field]) : '-';
+        } else if (field === 'estimated_land_price' || field === 'building_value') {
+          val = formatPrice(d[field]);
+        } else {
+          val = d[field] != null ? String(d[field]) : '-';
+        }
+        var td = createSafeElement('td', val);
+        td.style.background = 'var(--gold-pale)';
+        row.appendChild(td);
+      }
+
+      // API生データセル
+      for (var rc = 0; rc < rawColumns.length; rc++) {
+        var rawKey = rawColumns[rc][0];
+        var rawVal = raw[rawKey];
+        var cellText;
+        if (rawKey === 'TradePrice') {
+          cellText = formatPrice(rawVal);
+        } else if (rawVal == null || rawVal === '') {
+          cellText = '-';
+        } else {
+          cellText = String(rawVal);
+        }
+        row.appendChild(createSafeElement('td', cellText));
       }
 
       tbody.appendChild(row);
