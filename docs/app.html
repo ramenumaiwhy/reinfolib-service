@@ -398,6 +398,78 @@
     margin-top: 8px;
   }
 
+  /* --- Zoning Filter --- */
+  .filter-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--brown-light-alpha);
+  }
+  .filter-section .filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brown-warm);
+    margin-bottom: 8px;
+  }
+  .filter-section .filter-hint {
+    font-size: 11px;
+    color: var(--brown-light);
+    margin-bottom: 8px;
+  }
+  .filter-section select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--brown-light-alpha);
+    border-radius: 10px;
+    background: var(--cream);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--brown-warm);
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%237a6a5a' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .filter-section select:focus {
+    outline: none;
+    border-color: var(--terracotta-soft);
+  }
+  .zoning-detail {
+    display: none;
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--cream);
+    border-radius: 10px;
+    border: 1px solid var(--brown-light-alpha);
+  }
+  .zoning-detail.visible { display: block; }
+  .zoning-detail .zoning-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .zoning-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1.5px solid var(--brown-light-alpha);
+    border-radius: 100px;
+    background: #fff;
+    font-size: 12px;
+    color: var(--brown-warm);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .zoning-chip:hover { border-color: var(--terracotta-soft); }
+  .zoning-chip.selected {
+    background: var(--terracotta);
+    color: #fff;
+    border-color: var(--terracotta);
+  }
+  .zoning-chip input { display: none; }
+
   /* --- Warning --- */
   .data-warning {
     background: var(--gold-pale);
@@ -495,6 +567,20 @@
       <input type="text" id="addressInput" placeholder="例: 渋谷区恵比寿1丁目">
       <div class="input-hint">町名まで入力すると精度が上がります。番地は不要です。</div>
     </div>
+
+    <!-- 用途地域フィルタ（任意） -->
+    <div class="filter-section">
+      <div class="filter-label">用途地域で絞り込み（任意）</div>
+      <div class="filter-hint">選択しなければ全データで分析します</div>
+      <select id="zoningCategory">
+        <option value="">指定しない</option>
+        <option value="住居系">住居系</option>
+        <option value="商業系">商業系</option>
+        <option value="工業系">工業系</option>
+      </select>
+      <div class="zoning-detail" id="zoningDetail"></div>
+    </div>
+
     <div class="btn-group">
       <button class="btn btn-primary" id="analyzeBtn" disabled>分析する</button>
     </div>
@@ -592,6 +678,101 @@
   var resultSummary = document.getElementById('resultSummary');
   var landOnlyContent = document.getElementById('landOnlyContent');
   var buildingLandContent = document.getElementById('buildingLandContent');
+  var zoningCategorySelect = document.getElementById('zoningCategory');
+  var zoningDetailDiv = document.getElementById('zoningDetail');
+
+  // ─── 用途地域フィルタ UI ──────────────────────────
+  // 大分類→小分類チップの代表名リスト（各用途地域の正式名称のみ）
+  var ZONING_DISPLAY_NAMES = {
+    '住居系': [
+      '第１種低層住居専用地域',
+      '第２種低層住居専用地域',
+      '第１種中高層住居専用地域',
+      '第２種中高層住居専用地域',
+      '第１種住居地域',
+      '第２種住居地域',
+      '準住居地域',
+      '田園住居地域'
+    ],
+    '商業系': [
+      '近隣商業地域',
+      '商業地域'
+    ],
+    '工業系': [
+      '準工業地域',
+      '工業地域',
+      '工業専用地域'
+    ]
+  };
+
+  var selectedZoningTypes = [];
+
+  function renderZoningChips(category) {
+    zoningDetailDiv.textContent = '';
+    selectedZoningTypes = [];
+    if (!category) {
+      zoningDetailDiv.className = 'zoning-detail';
+      return;
+    }
+    var names = ZONING_DISPLAY_NAMES[category] || [];
+    var chipsDiv = createSafeElement('div');
+    chipsDiv.className = 'zoning-chips';
+    var hint = createSafeElement('div');
+    hint.className = 'filter-hint';
+    hint.textContent = '選択しなければ「' + category + '」全体で分析します';
+    zoningDetailDiv.appendChild(hint);
+
+    for (var i = 0; i < names.length; i++) {
+      (function(name) {
+        var chip = createSafeElement('label');
+        chip.className = 'zoning-chip';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = name;
+        chip.appendChild(cb);
+        var text = createSafeElement('span', name);
+        chip.appendChild(text);
+        cb.addEventListener('change', function() {
+          if (cb.checked) {
+            chip.className = 'zoning-chip selected';
+            selectedZoningTypes.push(name);
+          } else {
+            chip.className = 'zoning-chip';
+            selectedZoningTypes = selectedZoningTypes.filter(function(t) { return t !== name; });
+          }
+        });
+        chipsDiv.appendChild(chip);
+      })(names[i]);
+    }
+    zoningDetailDiv.appendChild(chipsDiv);
+    zoningDetailDiv.className = 'zoning-detail visible';
+  }
+
+  zoningCategorySelect.addEventListener('change', function() {
+    renderZoningChips(zoningCategorySelect.value);
+  });
+
+  // 用途地域フィルタの適用
+  function filterByZoning(dataArray) {
+    var category = zoningCategorySelect.value;
+    if (!category) return dataArray; // 指定なし → フィルタしない
+    var filtered = [];
+    for (var i = 0; i < dataArray.length; i++) {
+      var ud = dataArray[i].use_district;
+      var itemCategory = getZoningCategory(ud);
+      if (itemCategory !== category) continue;
+      // 小分類が選択されている場合はさらに絞り込み
+      if (selectedZoningTypes.length > 0) {
+        var matched = false;
+        for (var j = 0; j < selectedZoningTypes.length; j++) {
+          if (ud.indexOf(selectedZoningTypes[j]) >= 0) { matched = true; break; }
+        }
+        if (!matched) continue;
+      }
+      filtered.push(dataArray[i]);
+    }
+    return filtered;
+  }
 
   // ─── APIキー管理 ─────────────────────────────────
   function getApiKey() {
@@ -725,6 +906,46 @@
     return new Promise(function(resolve) { setTimeout(resolve, ms); });
   }
 
+  // ─── 用途地域ヘルパー ──────────────────────────────
+  // APIレスポンスでは UseDistrict または CityPlanning に用途地域が入る
+  function getUseDistrict(item) {
+    return item.UseDistrict || item.CityPlanning || '';
+  }
+
+  // 用途地域の大分類
+  var ZONING_CATEGORIES = {
+    '住居系': [
+      '第１種低層住居専用地域', '第１種低層住居専用', '第一種低層住居専用地域',
+      '第２種低層住居専用地域', '第２種低層住居専用', '第二種低層住居専用地域',
+      '第１種中高層住居専用地域', '第１種中高層住居専用', '第一種中高層住居専用地域',
+      '第２種中高層住居専用地域', '第２種中高層住居専用', '第二種中高層住居専用地域',
+      '第１種住居地域', '第１種住居', '第一種住居地域',
+      '第２種住居地域', '第２種住居', '第二種住居地域',
+      '準住居地域', '準住居',
+      '田園住居地域', '田園住居'
+    ],
+    '商業系': [
+      '近隣商業地域', '近隣商業',
+      '商業地域', '商業'
+    ],
+    '工業系': [
+      '準工業地域', '準工業',
+      '工業地域', '工業',
+      '工業専用地域', '工業専用'
+    ]
+  };
+
+  function getZoningCategory(useDistrict) {
+    if (!useDistrict) return '';
+    for (var cat in ZONING_CATEGORIES) {
+      var types = ZONING_CATEGORIES[cat];
+      for (var i = 0; i < types.length; i++) {
+        if (useDistrict.indexOf(types[i]) >= 0) return cat;
+      }
+    }
+    return '';
+  }
+
   // ─── データフィルタリング ─────────────────────────
   function filterByDistrict(data, prefecture, municipality, districtName) {
     var filtered = [];
@@ -817,7 +1038,7 @@
         trade_price: tradePrice,
         area_m2: areaM2,
         floor_area_ratio: floorAreaRatio,
-        use_district: item.UseDistrict || '',
+        use_district: getUseDistrict(item),
         period: item.Period || '',
         raw: item
       });
@@ -849,7 +1070,7 @@
         trade_price: parseInt(item.TradePrice || '0') || 0,
         area_m2: areaM2,
         floor_area_ratio: floorAreaRatio,
-        use_district: item.UseDistrict || '',
+        use_district: getUseDistrict(item),
         period: item.Period || '',
         structure: item.Structure || '',
         building_year: item.BuildingYear || '',
@@ -1083,6 +1304,16 @@
       { label: '対象地区の取引件数', value: String(result.filtered_records), unit: '件' }
     ];
 
+    // 用途地域フィルタ条件の表示
+    var zoneCat = zoningCategorySelect.value;
+    if (zoneCat) {
+      var zoneLabel = zoneCat;
+      if (selectedZoningTypes.length > 0) {
+        zoneLabel = selectedZoningTypes.join(', ');
+      }
+      items.push({ label: '用途地域フィルタ', value: zoneLabel, unit: '' });
+    }
+
     var landMedian = result.land_only.overall.tsubo_median;
     if (landMedian != null) {
       items.push({ label: '坪単価（中央値）', value: formatManYen(landMedian), unit: '万円' });
@@ -1273,23 +1504,25 @@
     setLoadingText('データを分析中...');
     var filtered = filterByDistrict(rawData, prefecture, municipality, districtName);
 
-    // 土地のみ
+    // 土地のみ → 用途地域フィルタ適用
     var landOnly = calcTsuboStats(filtered);
     landOnly = removeOutliers(landOnly);
+    landOnly = filterByZoning(landOnly);
     var landStats = summarizeByUseDistrict(landOnly);
     var allLandStats = summarizeStats(landOnly);
 
-    // 建物込み
+    // 建物込み → 用途地域フィルタ適用
     var buildingLand = calcBuildingLandStats(filtered);
     buildingLand = removeOutliers(buildingLand);
+    buildingLand = filterByZoning(buildingLand);
     var buildingStats = summarizeByUseDistrict(buildingLand);
     var allBuildingStats = summarizeStats(buildingLand);
 
-    // 市区町村全体（参考データ: 同一需給圏内の類似地域に相当）
-    var citywideLand = removeOutliers(calcTsuboStats(rawData));
+    // 市区町村全体（参考データ: 同一需給圏内の類似地域に相当）→ 同じフィルタ適用
+    var citywideLand = filterByZoning(removeOutliers(calcTsuboStats(rawData)));
     var citywideLandStats = summarizeByUseDistrict(citywideLand);
     var citywideLandOverall = summarizeStats(citywideLand);
-    var citywideBuilding = removeOutliers(calcBuildingLandStats(rawData));
+    var citywideBuilding = filterByZoning(removeOutliers(calcBuildingLandStats(rawData)));
     var citywideBuildingStats = summarizeByUseDistrict(citywideBuilding);
     var citywideBuildingOverall = summarizeStats(citywideBuilding);
 
