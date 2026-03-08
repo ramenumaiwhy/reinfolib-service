@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://msearch.gsi.go.jp https://mreversegeocoder.gsi.go.jp https://reinfolib-proxy.southern-a-22.workers.dev; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:;">
+<title>不動産相場チェッカー Web版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF6F0;
+    --cream-dark: #F0EAE0;
+    --brown-deep: #3D2B1F;
+    --brown-warm: #6B4C3B;
+    --brown-light: #A0836C;
+    --terracotta: #C4704B;
+    --terracotta-soft: #D4916F;
+    --green-deep: #2B5940;
+    --green-soft: #4A8B6A;
+    --green-pale: #E8F2EC;
+    --gold: #C9A84C;
+    --gold-pale: #FBF5E4;
+    --red: #C44B4B;
+    --red-pale: #FBE8E8;
+    --shadow-sm: 0 2px 8px rgba(61,43,31,0.06);
+    --shadow-md: 0 4px 20px rgba(61,43,31,0.08);
+    --radius: 12px;
+    --radius-lg: 20px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--brown-deep);
+    background: var(--cream);
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(196,112,75,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(43,89,64,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* --- Header --- */
+  header {
+    padding: 36px 0 16px;
+    text-align: center;
+  }
+  .header-badge {
+    display: inline-block;
+    background: var(--green-deep);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    padding: 5px 16px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 900;
+    font-size: clamp(24px, 5vw, 36px);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  header h1 em { font-style: normal; color: var(--terracotta); }
+  header .lead {
+    font-size: 14px;
+    color: var(--brown-warm);
+    font-weight: 300;
+    margin-bottom: 8px;
+  }
+  .back-link {
+    display: inline-block;
+    font-size: 13px;
+    color: var(--brown-light);
+    text-decoration: none;
+    margin-bottom: 16px;
+  }
+  .back-link:hover { color: var(--terracotta); }
+
+  /* --- Card --- */
+  .card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(61,43,31,0.04);
+    margin-bottom: 24px;
+  }
+  .card-title {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon {
+    width: 32px; height: 32px;
+    background: var(--gold-pale);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  /* --- Form --- */
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--brown-warm);
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--cream);
+    color: var(--brown-deep);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus {
+    border-color: var(--terracotta);
+  }
+  .input-hint {
+    font-size: 12px;
+    color: var(--brown-light);
+    margin-top: 6px;
+  }
+  .input-row {
+    margin-bottom: 16px;
+  }
+
+  /* --- Buttons --- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 28px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--terracotta);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(196,112,75,0.3);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(196,112,75,0.4);
+    background: #b5613e;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--brown-warm);
+    border: 1.5px solid var(--cream-dark);
+  }
+  .btn-outline:hover { border-color: var(--brown-light); }
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1.5px solid var(--red-pale);
+    font-size: 13px;
+    padding: 8px 16px;
+  }
+  .btn-danger:hover { background: var(--red-pale); }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  /* --- Status --- */
+  .status {
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .status.success {
+    display: block;
+    background: var(--green-pale);
+    color: var(--green-deep);
+    border: 1px solid rgba(43,89,64,0.15);
+  }
+  .status.error {
+    display: block;
+    background: var(--red-pale);
+    color: var(--red);
+    border: 1px solid rgba(196,75,75,0.15);
+  }
+  .status.info {
+    display: block;
+    background: var(--gold-pale);
+    color: var(--brown-warm);
+    border: 1px solid rgba(201,168,76,0.2);
+  }
+
+  /* --- Loading --- */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    display: none;
+  }
+  .loading.active { display: block; }
+  .spinner {
+    display: inline-block;
+    width: 36px; height: 36px;
+    border: 3px solid var(--cream-dark);
+    border-top-color: var(--terracotta);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-size: 14px;
+    color: var(--brown-warm);
+    margin-top: 12px;
+  }
+
+  /* --- Results --- */
+  .results { display: none; }
+  .results.active { display: block; }
+  .result-summary {
+    background: linear-gradient(135deg, #fff 0%, var(--gold-pale) 100%);
+    border: 2px solid rgba(201,168,76,0.2);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  .result-summary h3 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .summary-item {
+    background: rgba(255,255,255,0.7);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .summary-label {
+    font-size: 12px;
+    color: var(--brown-light);
+    margin-bottom: 4px;
+  }
+  .summary-value {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--terracotta);
+  }
+  .summary-unit {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--brown-warm);
+  }
+
+  /* --- Table --- */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 16px -8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 500px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--cream-dark);
+  }
+  th {
+    background: var(--cream);
+    color: var(--brown-warm);
+    font-weight: 500;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+  }
+  td { font-variant-numeric: tabular-nums; }
+  tr:hover td { background: var(--gold-pale); }
+
+  .data-note {
+    font-size: 12px;
+    color: var(--brown-light);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* --- Warning --- */
+  .data-warning {
+    background: var(--gold-pale);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--brown-warm);
+    margin-bottom: 16px;
+  }
+
+  /* --- Disclaimer --- */
+  .disclaimer {
+    background: var(--cream-dark);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    font-size: 12px;
+    color: var(--brown-light);
+    line-height: 1.8;
+    border-left: 3px solid var(--brown-light);
+    margin-bottom: 24px;
+  }
+  .disclaimer strong {
+    color: var(--brown-warm);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* --- Footer --- */
+  footer {
+    text-align: center;
+    padding: 24px 0 40px;
+    font-size: 13px;
+    color: var(--brown-light);
+  }
+  footer a {
+    color: var(--brown-warm);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--brown-light);
+  }
+
+  /* --- Responsive --- */
+  @media (max-width: 480px) {
+    .card { padding: 20px; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .btn-group { flex-direction: column; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <a class="back-link" href="index.html">&larr; トップページに戻る</a>
+
+  <header>
+    <div class="header-badge">Web版</div>
+    <h1><em>不動産相場</em>チェッカー</h1>
+    <p class="lead">住所を入力するだけで、国交省の取引データから坪単価を自動分析</p>
+  </header>
+
+  <!-- APIキー設定 -->
+  <div class="card" id="apiKeyCard">
+    <div class="card-title">
+      <span class="icon">&#128273;</span>
+      APIキーの設定
+    </div>
+    <div id="apiKeyForm">
+      <div class="input-row">
+        <label for="apiKeyInput">国交省 不動産情報ライブラリ APIキー</label>
+        <input type="password" id="apiKeyInput" placeholder="APIキーを入力してください">
+        <div class="input-hint">APIキーはこのブラウザにのみ保存されます。サーバーには送信されません。</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="saveKeyBtn">保存して検証</button>
+      </div>
+      <div class="status" id="apiKeyStatus"></div>
+    </div>
+    <div id="apiKeyDone" style="display:none">
+      <div class="status success">APIキーが設定されています</div>
+      <div class="btn-group">
+        <button class="btn btn-danger" id="deleteKeyBtn">APIキーを削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 住所入力 -->
+  <div class="card" id="searchCard">
+    <div class="card-title">
+      <span class="icon">&#128269;</span>
+      住所で相場を検索
+    </div>
+    <div class="input-row">
+      <label for="addressInput">分析したい住所</label>
+      <input type="text" id="addressInput" placeholder="例: 渋谷区恵比寿1丁目">
+      <div class="input-hint">町名まで入力すると精度が上がります。番地は不要です。</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="analyzeBtn" disabled>分析する</button>
+    </div>
+  </div>
+
+  <!-- ローディング -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">住所を解析中...</div>
+  </div>
+
+  <!-- 結果表示 -->
+  <div class="results" id="results">
+    <div class="result-summary" id="resultSummary"></div>
+
+    <div class="card" id="landOnlyCard">
+      <div class="card-title">
+        <span class="icon">&#127969;</span>
+        土地のみ取引
+      </div>
+      <div id="landOnlyContent"></div>
+    </div>
+
+    <div class="card" id="buildingLandCard">
+      <div class="card-title">
+        <span class="icon">&#128200;</span>
+        建物込み取引からの推定（参考値）
+      </div>
+      <div id="buildingLandContent"></div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>ご注意・免責事項</strong>
+      このサービスは、国土交通省不動産情報ライブラリのAPI機能を使用していますが、
+      提供情報の最新性、正確性、完全性等が保証されたものではありません。
+      建物込み取引の推定土地価格は、法定耐用年数に基づく簡易推定であり、
+      リフォーム・個別品質・設備は未考慮です。参考値としてご利用ください。
+      不動産の売買にあたっては、必ず不動産鑑定士や宅地建物取引士等の専門家にご相談ください。
+    </div>
+  </div>
+
+  <footer>
+    不動産相場チェッカー &mdash;
+    <a href="https://github.com/ramenumaiwhy/reinfolib-service" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ─── 設定 ───────────────────────────────────────
+  // Workers プロキシ URL（デプロイ後に更新）
+  var PROXY_URL = 'https://reinfolib-proxy.southern-a-22.workers.dev';
+  var GSI_GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch';
+  var GSI_REVERSE_GEOCODER_URL = 'https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress';
+  var TSUBO_PER_SQM = 3.30579;
+
+  // ─── 定数 ───────────────────────────────────────
+  var PREFECTURE_CODES = {
+    '01':'北海道','02':'青森県','03':'岩手県','04':'宮城県',
+    '05':'秋田県','06':'山形県','07':'福島県','08':'茨城県',
+    '09':'栃木県','10':'群馬県','11':'埼玉県','12':'千葉県',
+    '13':'東京都','14':'神奈川県','15':'新潟県','16':'富山県',
+    '17':'石川県','18':'福井県','19':'山梨県','20':'長野県',
+    '21':'岐阜県','22':'静岡県','23':'愛知県','24':'三重県',
+    '25':'滋賀県','26':'京都府','27':'大阪府','28':'兵庫県',
+    '29':'奈良県','30':'和歌山県','31':'鳥取県','32':'島根県',
+    '33':'岡山県','34':'広島県','35':'山口県','36':'徳島県',
+    '37':'香川県','38':'愛媛県','39':'高知県','40':'福岡県',
+    '41':'佐賀県','42':'長崎県','43':'熊本県','44':'大分県',
+    '45':'宮崎県','46':'鹿児島県','47':'沖縄県'
+  };
+
+  var BUILDING_SPECS = {
+    SRC: { useful_life: 47, unit_cost: 335000 },
+    RC:  { useful_life: 47, unit_cost: 334000 },
+    LS:  { useful_life: 27, unit_cost: 325000 },
+    S:   { useful_life: 34, unit_cost: 325000 },
+    W:   { useful_life: 22, unit_cost: 215000 }
+  };
+
+  // ─── DOM 要素 ──────────────────────────────────
+  var apiKeyInput = document.getElementById('apiKeyInput');
+  var saveKeyBtn = document.getElementById('saveKeyBtn');
+  var deleteKeyBtn = document.getElementById('deleteKeyBtn');
+  var apiKeyStatus = document.getElementById('apiKeyStatus');
+  var apiKeyForm = document.getElementById('apiKeyForm');
+  var apiKeyDone = document.getElementById('apiKeyDone');
+  var addressInput = document.getElementById('addressInput');
+  var analyzeBtn = document.getElementById('analyzeBtn');
+  var loading = document.getElementById('loading');
+  var loadingText = document.getElementById('loadingText');
+  var results = document.getElementById('results');
+  var resultSummary = document.getElementById('resultSummary');
+  var landOnlyContent = document.getElementById('landOnlyContent');
+  var buildingLandContent = document.getElementById('buildingLandContent');
+
+  // ─── APIキー管理 ─────────────────────────────────
+  function getApiKey() {
+    return localStorage.getItem('reinfolib_api_key') || '';
+  }
+
+  function setApiKey(key) {
+    localStorage.setItem('reinfolib_api_key', key);
+  }
+
+  function removeApiKey() {
+    localStorage.removeItem('reinfolib_api_key');
+  }
+
+  function updateKeyUI() {
+    if (getApiKey()) {
+      apiKeyForm.style.display = 'none';
+      apiKeyDone.style.display = 'block';
+      analyzeBtn.disabled = false;
+    } else {
+      apiKeyForm.style.display = 'block';
+      apiKeyDone.style.display = 'none';
+      analyzeBtn.disabled = true;
+    }
+  }
+
+  function showStatus(el, type, msg) {
+    el.className = 'status ' + type;
+    el.textContent = msg;
+  }
+
+  saveKeyBtn.addEventListener('click', async function() {
+    var key = apiKeyInput.value.trim();
+    if (!key) {
+      showStatus(apiKeyStatus, 'error', 'APIキーを入力してください');
+      return;
+    }
+    saveKeyBtn.disabled = true;
+    showStatus(apiKeyStatus, 'info', 'APIキーを検証中...');
+    try {
+      var resp = await fetch(PROXY_URL + '/api/XIT002?area=13', {
+        headers: { 'Ocp-Apim-Subscription-Key': key }
+      });
+      if (resp.ok) {
+        setApiKey(key);
+        apiKeyInput.value = '';
+        apiKeyStatus.className = 'status';
+        apiKeyStatus.textContent = '';
+        updateKeyUI();
+      } else if (resp.status === 401 || resp.status === 403) {
+        showStatus(apiKeyStatus, 'error', 'APIキーが無効です。正しいキーを入力してください。');
+      } else {
+        showStatus(apiKeyStatus, 'error', 'API接続エラー（ステータス: ' + resp.status + '）');
+      }
+    } catch (e) {
+      showStatus(apiKeyStatus, 'error', 'サーバーに接続できません。しばらく経ってからお試しください。');
+    }
+    saveKeyBtn.disabled = false;
+  });
+
+  deleteKeyBtn.addEventListener('click', function() {
+    removeApiKey();
+    updateKeyUI();
+  });
+
+  updateKeyUI();
+
+  // ─── ジオコーディング（国土地理院・直接呼び出し）──────
+  async function geocode(address) {
+    var resp = await fetch(GSI_GEOCODER_URL + '?q=' + encodeURIComponent(address));
+    if (!resp.ok) throw new Error('ジオコーダーエラー');
+    var data = await resp.json();
+    if (!data || data.length === 0) throw new Error('住所が見つかりません: ' + address);
+    var coords = data[0].geometry.coordinates;
+    return { lat: coords[1], lon: coords[0] };
+  }
+
+  async function reverseGeocode(lat, lon) {
+    var resp = await fetch(GSI_REVERSE_GEOCODER_URL + '?lat=' + lat + '&lon=' + lon);
+    if (!resp.ok) throw new Error('逆ジオコーダーエラー');
+    var data = await resp.json();
+    return {
+      muniCd: data.results.muniCd,
+      lv01Nm: data.results.lv01Nm
+    };
+  }
+
+  // ─── 住所解析ヘルパー ────────────────────────────
+  function getPrefName(muniCd) {
+    return PREFECTURE_CODES[muniCd.substring(0, 2)] || '';
+  }
+
+  function getDistrictName(lv01Nm) {
+    return lv01Nm.replace(/([一二三四五六七八九十百千万]+|[0-9]+)丁目$/, '');
+  }
+
+  async function getCityName(apiKey, muniCd) {
+    var prefCd = muniCd.substring(0, 2);
+    var resp = await fetch(PROXY_URL + '/api/XIT002?area=' + prefCd, {
+      headers: { 'Ocp-Apim-Subscription-Key': apiKey }
+    });
+    if (!resp.ok) throw new Error('市区町村名の取得に失敗');
+    var data = await resp.json();
+    var items = data.data || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === muniCd) return items[i].name;
+    }
+    return null;
+  }
+
+  // ─── 取引データ取得 ──────────────────────────────
+  async function fetchTransactions(apiKey, muniCd, years) {
+    var allData = [];
+    for (var i = 0; i < years.length; i++) {
+      if (i > 0) await sleep(1000);
+      var resp = await fetch(
+        PROXY_URL + '/api/XIT001?year=' + years[i] + '&city=' + muniCd,
+        { headers: { 'Ocp-Apim-Subscription-Key': apiKey } }
+      );
+      if (resp.status === 404) continue;
+      if (!resp.ok) throw new Error('取引データ取得エラー (year=' + years[i] + ')');
+      var result = await resp.json();
+      if (result && result.data) {
+        allData = allData.concat(result.data);
+      }
+    }
+    return allData;
+  }
+
+  function sleep(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  // ─── データフィルタリング ─────────────────────────
+  function filterByDistrict(data, prefecture, municipality, districtName) {
+    var filtered = [];
+    for (var i = 0; i < data.length; i++) {
+      var item = data[i];
+      if (item.Prefecture !== prefecture) continue;
+      var itemMuni = item.Municipality || '';
+      if (municipality) {
+        var muniMatch = (itemMuni === municipality) ||
+          (municipality.endsWith('区') && itemMuni.endsWith(municipality));
+        if (!muniMatch) continue;
+      }
+      if (item.DistrictName !== districtName) continue;
+      filtered.push(item);
+    }
+    return filtered;
+  }
+
+  // ─── 和暦変換 ──────────────────────────────────
+  function convertJapaneseYear(yearStr) {
+    if (!yearStr) return null;
+    yearStr = yearStr.replace('元年', '1年');
+    var m;
+    m = yearStr.match(/令和(\d+)年/);
+    if (m) return 2018 + parseInt(m[1]);
+    m = yearStr.match(/平成(\d+)年/);
+    if (m) return 1988 + parseInt(m[1]);
+    m = yearStr.match(/昭和(\d+)年/);
+    if (m) return 1925 + parseInt(m[1]);
+    m = yearStr.match(/(\d{4})年/);
+    if (m) return parseInt(m[1]);
+    return null;
+  }
+
+  // ─── 建物残価推定 ──────────────────────────────
+  function classifyStructure(structure) {
+    if (structure.indexOf('\uff33\uff32\uff23') >= 0) return BUILDING_SPECS.SRC;  // ＳＲＣ
+    if (structure.indexOf('\uff32\uff23') >= 0) return BUILDING_SPECS.RC;          // ＲＣ
+    if (structure.indexOf('軽量鉄骨') >= 0) return BUILDING_SPECS.LS;
+    if (structure.indexOf('鉄骨') >= 0) return BUILDING_SPECS.S;
+    return BUILDING_SPECS.W;
+  }
+
+  function estimateBuildingResidual(item) {
+    var tradePrice = parseInt(item.TradePrice || '0') || 0;
+    var totalFloorArea = item.TotalFloorArea;
+    var buildingYear = item.BuildingYear;
+    var structure = item.Structure || '';
+
+    if (!tradePrice || !totalFloorArea || !buildingYear) return null;
+    var floorArea = parseFloat(totalFloorArea);
+    if (isNaN(floorArea) || floorArea <= 0) return null;
+
+    var currentYear = new Date().getFullYear();
+    var builtYear = convertJapaneseYear(buildingYear);
+    if (!builtYear) return null;
+    var age = currentYear - builtYear;
+
+    var specs = classifyStructure(structure);
+    var remainingRatio = Math.max(0, 1 - age / specs.useful_life);
+    var buildingValue = specs.unit_cost * floorArea * remainingRatio;
+    var estimatedLandPrice = tradePrice - buildingValue;
+    if (estimatedLandPrice <= 0) return null;
+
+    return {
+      estimated_land_price: Math.floor(estimatedLandPrice),
+      building_value: Math.floor(buildingValue),
+      remaining_ratio: remainingRatio
+    };
+  }
+
+  // ─── 坪単価・一種単価算出 ──────────────────────────
+  function calcTsuboStats(items) {
+    var results = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item.Type !== '宅地(土地のみ)') continue;
+      var tradePrice = parseInt(item.TradePrice || '0') || 0;
+      if (tradePrice <= 100000) continue;
+      var areaM2 = parseFloat(item.Area || '0') || 0;
+      if (areaM2 <= 0) continue;
+
+      var tsuboPrice = tradePrice / areaM2 * TSUBO_PER_SQM;
+      var floorAreaRatio = parseFloat(item.FloorAreaRatio || '0') || 0;
+      var ikishuPrice = floorAreaRatio > 0 ? tsuboPrice / (floorAreaRatio / 100) : null;
+
+      results.push({
+        tsubo_price: tsuboPrice,
+        ikishu_price: ikishuPrice,
+        trade_price: tradePrice,
+        area_m2: areaM2,
+        floor_area_ratio: floorAreaRatio,
+        use_district: item.UseDistrict || '',
+        period: item.Period || ''
+      });
+    }
+    return results;
+  }
+
+  function calcBuildingLandStats(items) {
+    var results = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item.Type !== '宅地(土地と建物)') continue;
+      var areaM2 = parseFloat(item.Area || '0') || 0;
+      if (areaM2 <= 0) continue;
+
+      var estimation = estimateBuildingResidual(item);
+      if (!estimation) continue;
+
+      var tsuboPrice = estimation.estimated_land_price / areaM2 * TSUBO_PER_SQM;
+      var floorAreaRatio = parseFloat(item.FloorAreaRatio || '0') || 0;
+      var ikishuPrice = floorAreaRatio > 0 ? tsuboPrice / (floorAreaRatio / 100) : null;
+
+      results.push({
+        tsubo_price: tsuboPrice,
+        ikishu_price: ikishuPrice,
+        estimated_land_price: estimation.estimated_land_price,
+        building_value: estimation.building_value,
+        remaining_ratio: estimation.remaining_ratio,
+        area_m2: areaM2,
+        floor_area_ratio: floorAreaRatio,
+        use_district: item.UseDistrict || '',
+        period: item.Period || ''
+      });
+    }
+    return results;
+  }
+
+  // ─── 異常値除外 ──────────────────────────────────
+  function removeOutliers(results) {
+    var prices = results.map(function(r) { return r.tsubo_price; }).filter(function(p) { return p != null; });
+    if (prices.length < 3) return results;
+    prices.sort(function(a, b) { return a - b; });
+    var median = prices[Math.floor(prices.length / 2)];
+    return results.filter(function(r) {
+      return r.tsubo_price == null || r.tsubo_price >= median / 5;
+    });
+  }
+
+  // ─── 統計サマリー ──────────────────────────────────
+  function median(arr) {
+    if (arr.length === 0) return null;
+    var sorted = arr.slice().sort(function(a, b) { return a - b; });
+    var mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  function summarizeStats(results) {
+    var tsuboPrices = results.map(function(r) { return r.tsubo_price; });
+    var ikishuPrices = results.filter(function(r) { return r.ikishu_price != null; })
+                              .map(function(r) { return r.ikishu_price; });
+    var summary = {
+      count: tsuboPrices.length,
+      tsubo_min: tsuboPrices.length ? Math.min.apply(null, tsuboPrices) : null,
+      tsubo_max: tsuboPrices.length ? Math.max.apply(null, tsuboPrices) : null,
+      tsubo_median: median(tsuboPrices)
+    };
+    if (ikishuPrices.length) {
+      summary.ikishu_min = Math.min.apply(null, ikishuPrices);
+      summary.ikishu_max = Math.max.apply(null, ikishuPrices);
+      summary.ikishu_median = median(ikishuPrices);
+    }
+    return summary;
+  }
+
+  function summarizeByUseDistrict(results) {
+    var groups = {};
+    for (var i = 0; i < results.length; i++) {
+      var key = results[i].use_district || '不明';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(results[i]);
+    }
+    var summaries = {};
+    for (var district in groups) {
+      summaries[district] = summarizeStats(groups[district]);
+    }
+    return summaries;
+  }
+
+  // ─── 表示ヘルパー ──────────────────────────────────
+  function formatManYen(value) {
+    if (value == null) return '-';
+    return (value / 10000).toFixed(1);
+  }
+
+  function createSafeElement(tag, text, attrs) {
+    var el = document.createElement(tag);
+    if (text != null) el.textContent = text;
+    if (attrs) {
+      for (var key in attrs) {
+        el.setAttribute(key, attrs[key]);
+      }
+    }
+    return el;
+  }
+
+  function renderSummary(result) {
+    resultSummary.textContent = '';
+    var h3 = createSafeElement('h3', result.prefecture + result.municipality + result.district_name + ' の相場');
+    resultSummary.appendChild(h3);
+
+    var grid = createSafeElement('div');
+    grid.className = 'summary-grid';
+
+    var items = [
+      { label: '分析対象年', value: result.years.join(', '), unit: '' },
+      { label: '対象地区の取引件数', value: String(result.filtered_records), unit: '件' }
+    ];
+
+    var landMedian = result.land_only.overall.tsubo_median;
+    if (landMedian != null) {
+      items.push({ label: '坪単価（中央値）', value: formatManYen(landMedian), unit: '万円' });
+    }
+
+    var bldMedian = result.building_land.overall.tsubo_median;
+    if (bldMedian != null) {
+      items.push({ label: '推定坪単価（中央値）', value: formatManYen(bldMedian), unit: '万円' });
+    }
+
+    for (var i = 0; i < items.length; i++) {
+      var item = createSafeElement('div');
+      item.className = 'summary-item';
+      var lbl = createSafeElement('div', items[i].label);
+      lbl.className = 'summary-label';
+      var val = createSafeElement('div');
+      val.className = 'summary-value';
+      val.textContent = items[i].value;
+      if (items[i].unit) {
+        var unitSpan = createSafeElement('span', ' ' + items[i].unit);
+        unitSpan.className = 'summary-unit';
+        val.appendChild(unitSpan);
+      }
+      item.appendChild(lbl);
+      item.appendChild(val);
+      grid.appendChild(item);
+    }
+    resultSummary.appendChild(grid);
+  }
+
+  function renderStatsTable(container, byUseDistrict, overall, isBuilding) {
+    container.textContent = '';
+
+    var count = overall.count;
+    if (count === 0) {
+      container.appendChild(createSafeElement('p', '該当データがありません'));
+      return;
+    }
+
+    if (count < 3) {
+      var warn = createSafeElement('div', '3件未満のためデータ不足です。暫定参考値としてご覧ください。');
+      warn.className = 'data-warning';
+      container.appendChild(warn);
+    }
+
+    var wrap = createSafeElement('div');
+    wrap.className = 'table-wrap';
+    var table = createSafeElement('table');
+
+    var thead = createSafeElement('thead');
+    var headerRow = createSafeElement('tr');
+    var headers = ['用途地域', '件数', isBuilding ? '推定坪単価(万円)' : '坪単価(万円)', '一種単価(万円)'];
+    for (var h = 0; h < headers.length; h++) {
+      headerRow.appendChild(createSafeElement('th', headers[h]));
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    var tbody = createSafeElement('tbody');
+    for (var district in byUseDistrict) {
+      var stats = byUseDistrict[district];
+      var row = createSafeElement('tr');
+      row.appendChild(createSafeElement('td', district));
+      row.appendChild(createSafeElement('td', stats.count + '件'));
+      row.appendChild(createSafeElement('td',
+        formatManYen(stats.tsubo_min) + '〜' + formatManYen(stats.tsubo_max) +
+        '（中央値 ' + formatManYen(stats.tsubo_median) + '）'
+      ));
+      var ikishu = '-';
+      if (stats.ikishu_median != null) {
+        ikishu = formatManYen(stats.ikishu_min) + '〜' + formatManYen(stats.ikishu_max) +
+                 '（中央値 ' + formatManYen(stats.ikishu_median) + '）';
+      }
+      row.appendChild(createSafeElement('td', ikishu));
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+
+    var note = createSafeElement('p', '全体: ' +
+      (isBuilding ? '推定坪単価' : '坪単価') + ' 中央値 ' +
+      formatManYen(overall.tsubo_median) + '万円 (' + overall.count + '件)');
+    note.className = 'data-note';
+    container.appendChild(note);
+  }
+
+  // ─── メイン分析フロー ──────────────────────────────
+  async function analyze(apiKey, address) {
+    var currentYear = new Date().getFullYear();
+    var years = [currentYear, currentYear - 1, currentYear - 2];
+
+    setLoadingText('住所を解析中...');
+    var coords = await geocode(address);
+
+    setLoadingText('市区町村コードを取得中...');
+    var geo = await reverseGeocode(coords.lat, coords.lon);
+
+    var prefecture = getPrefName(geo.muniCd);
+    var districtName = getDistrictName(geo.lv01Nm);
+
+    setLoadingText('市区町村名を取得中...');
+    var municipality = await getCityName(apiKey, geo.muniCd);
+    if (!municipality) throw new Error('市区町村名の取得に失敗しました');
+
+    setLoadingText('取引データを取得中（3年分）...');
+    var rawData = await fetchTransactions(apiKey, geo.muniCd, years);
+
+    setLoadingText('データを分析中...');
+    var filtered = filterByDistrict(rawData, prefecture, municipality, districtName);
+
+    // 土地のみ
+    var landOnly = calcTsuboStats(filtered);
+    landOnly = removeOutliers(landOnly);
+    var landStats = summarizeByUseDistrict(landOnly);
+    var allLandStats = summarizeStats(landOnly);
+
+    // 建物込み
+    var buildingLand = calcBuildingLandStats(filtered);
+    buildingLand = removeOutliers(buildingLand);
+    var buildingStats = summarizeByUseDistrict(buildingLand);
+    var allBuildingStats = summarizeStats(buildingLand);
+
+    return {
+      address: address,
+      lat: coords.lat,
+      lon: coords.lon,
+      prefecture: prefecture,
+      municipality: municipality,
+      district_name: districtName,
+      muni_cd: geo.muniCd,
+      years: years,
+      total_records: rawData.length,
+      filtered_records: filtered.length,
+      land_only: {
+        count: landOnly.length,
+        by_use_district: landStats,
+        overall: allLandStats
+      },
+      building_land: {
+        count: buildingLand.length,
+        by_use_district: buildingStats,
+        overall: allBuildingStats
+      }
+    };
+  }
+
+  function setLoadingText(text) {
+    loadingText.textContent = text;
+  }
+
+  // ─── イベントハンドラ ──────────────────────────────
+  analyzeBtn.addEventListener('click', async function() {
+    var address = addressInput.value.trim();
+    if (!address) return;
+    var apiKey = getApiKey();
+    if (!apiKey) return;
+
+    analyzeBtn.disabled = true;
+    loading.className = 'loading active';
+    results.className = 'results';
+
+    try {
+      var result = await analyze(apiKey, address);
+
+      renderSummary(result);
+      renderStatsTable(landOnlyContent, result.land_only.by_use_district, result.land_only.overall, false);
+      renderStatsTable(buildingLandContent, result.building_land.by_use_district, result.building_land.overall, true);
+
+      loading.className = 'loading';
+      results.className = 'results active';
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      loading.className = 'loading';
+      var errCard = document.getElementById('searchCard');
+      var existing = errCard.querySelector('.status');
+      if (existing) existing.remove();
+      var errEl = createSafeElement('div', e.message || '分析中にエラーが発生しました');
+      errEl.className = 'status error';
+      errCard.appendChild(errEl);
+      setTimeout(function() { errEl.remove(); }, 8000);
+    }
+
+    analyzeBtn.disabled = false;
+  });
+
+  // Enter キーで分析実行
+  addressInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !analyzeBtn.disabled) {
+      analyzeBtn.click();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
