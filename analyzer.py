@@ -119,7 +119,10 @@ def get_city_name(api_key: str, muni_cd: str) -> str | None:
 def fetch_transactions(
     api_key: str, muni_cd: str, years: list[int]
 ) -> list[dict]:
-    """XIT001 API を呼び出して取引データを取得（複数年分を結合）"""
+    """XIT001 API を呼び出して取引データを取得（複数年分を結合）
+
+    まだデータが公開されていない年（404）はスキップする。
+    """
     all_data = []
     for i, year in enumerate(years):
         if i > 0:
@@ -131,6 +134,8 @@ def fetch_transactions(
             timeout=30,
             allow_redirects=False,
         )
+        if resp.status_code == 404:
+            continue
         resp.raise_for_status()
         result = resp.json()
         if result and "data" in result:
