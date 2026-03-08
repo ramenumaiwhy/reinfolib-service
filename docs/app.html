@@ -359,6 +359,45 @@
   .detail-section th { font-size: 11px; }
   .detail-section td { font-size: 12px; white-space: nowrap; }
 
+  /* --- Confidence Badge --- */
+  .confidence-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .confidence-high { background: var(--green-pale); color: var(--green-deep); }
+  .confidence-mid { background: #e8f0fb; color: #2563a0; }
+  .confidence-low { background: var(--gold-pale); color: #a07a20; }
+  .confidence-poor { background: var(--red-pale); color: var(--red); }
+
+  /* --- City-wide Reference --- */
+  .citywide-ref {
+    background: var(--cream);
+    border: 1px dashed var(--brown-light);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .citywide-ref .ref-title {
+    font-weight: 700;
+    color: var(--brown-warm);
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .citywide-ref .ref-note {
+    font-size: 11px;
+    color: var(--brown-light);
+    font-style: italic;
+    margin-top: 8px;
+  }
+
   /* --- Warning --- */
   .data-warning {
     background: var(--gold-pale);
@@ -1074,19 +1113,88 @@
     resultSummary.appendChild(grid);
   }
 
-  function renderStatsTable(container, byUseDistrict, overall, isBuilding, details) {
-    container.textContent = '';
+  function getConfidence(count) {
+    if (count >= 30) return { label: '信頼度: 高', cls: 'confidence-high', note: '' };
+    if (count >= 20) return { label: '信頼度: 中', cls: 'confidence-mid', note: '中央値は概ね安定。±15%程度のブレ幅を見てください。' };
+    if (count >= 5)  return { label: '信頼度: 低', cls: 'confidence-low', note: '件数が少なく参考値です。下の市区町村全体のデータもご参照ください。' };
+    return { label: '信頼度: 不足', cls: 'confidence-poor', note: '件数が極めて少なく統計的に信頼できません。市区町村全体のデータをご参照ください。' };
+  }
 
-    var count = overall.count;
-    if (count === 0) {
-      container.appendChild(createSafeElement('p', '該当データがありません'));
+  function renderCitywideRef(container, citywideByDistrict, citywideOverall, isBuilding, municipalityName) {
+    var ref = createSafeElement('div');
+    ref.className = 'citywide-ref';
+
+    var title = createSafeElement('div', municipalityName + '全体の同一用途地域データ（参考）');
+    title.className = 'ref-title';
+    ref.appendChild(title);
+
+    if (citywideOverall.count === 0) {
+      ref.appendChild(createSafeElement('p', '該当データがありません'));
+      container.appendChild(ref);
       return;
     }
 
-    if (count < 3) {
-      var warn = createSafeElement('div', '3件未満のためデータ不足です。暫定参考値としてご覧ください。');
-      warn.className = 'data-warning';
-      container.appendChild(warn);
+    var wrap = createSafeElement('div');
+    wrap.className = 'table-wrap';
+    var table = createSafeElement('table');
+    var thead = createSafeElement('thead');
+    var headerRow = createSafeElement('tr');
+    var headers = ['用途地域', '件数', isBuilding ? '推定坪単価(万円)' : '坪単価(万円)'];
+    for (var h = 0; h < headers.length; h++) {
+      headerRow.appendChild(createSafeElement('th', headers[h]));
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    var tbody = createSafeElement('tbody');
+    for (var district in citywideByDistrict) {
+      var stats = citywideByDistrict[district];
+      var row = createSafeElement('tr');
+      row.appendChild(createSafeElement('td', district));
+      row.appendChild(createSafeElement('td', stats.count + '件'));
+      row.appendChild(createSafeElement('td',
+        formatManYen(stats.tsubo_min) + '〜' + formatManYen(stats.tsubo_max) +
+        '（中央値 ' + formatManYen(stats.tsubo_median) + '）'
+      ));
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    ref.appendChild(wrap);
+
+    var note = createSafeElement('div',
+      '不動産鑑定評価基準の「同一需給圏内の類似地域」に相当する参考値です。' +
+      '地域要因（駅距離・周辺環境等）の補正は行っていないため、あくまで目安としてご利用ください。');
+    note.className = 'ref-note';
+    ref.appendChild(note);
+
+    container.appendChild(ref);
+  }
+
+  function renderStatsTable(container, byUseDistrict, overall, isBuilding, details, citywideData, municipalityName) {
+    container.textContent = '';
+
+    var count = overall.count;
+
+    // 信頼度バッジ
+    var conf = getConfidence(count);
+    var badge = createSafeElement('span', conf.label);
+    badge.className = 'confidence-badge ' + conf.cls;
+    container.appendChild(badge);
+    if (conf.note) {
+      var confNote = createSafeElement('div', conf.note);
+      confNote.className = 'data-warning';
+      confNote.style.marginTop = '8px';
+      container.appendChild(confNote);
+    }
+
+    if (count === 0) {
+      container.appendChild(createSafeElement('p', '該当データがありません'));
+      // 件数0でも市区町村参考データは表示
+      if (citywideData && municipalityName) {
+        renderCitywideRef(container, citywideData.by_use_district, citywideData.overall, isBuilding, municipalityName);
+      }
+      return;
     }
 
     var wrap = createSafeElement('div');
@@ -1134,6 +1242,11 @@
     if (details && details.length > 0) {
       renderDetailTable(container, details, isBuilding);
     }
+
+    // 件数が少ない場合、市区町村全体の参考データを表示
+    if (count < 20 && citywideData && municipalityName) {
+      renderCitywideRef(container, citywideData.by_use_district, citywideData.overall, isBuilding, municipalityName);
+    }
   }
 
   // ─── メイン分析フロー ──────────────────────────────
@@ -1172,6 +1285,14 @@
     var buildingStats = summarizeByUseDistrict(buildingLand);
     var allBuildingStats = summarizeStats(buildingLand);
 
+    // 市区町村全体（参考データ: 同一需給圏内の類似地域に相当）
+    var citywideLand = removeOutliers(calcTsuboStats(rawData));
+    var citywideLandStats = summarizeByUseDistrict(citywideLand);
+    var citywideLandOverall = summarizeStats(citywideLand);
+    var citywideBuilding = removeOutliers(calcBuildingLandStats(rawData));
+    var citywideBuildingStats = summarizeByUseDistrict(citywideBuilding);
+    var citywideBuildingOverall = summarizeStats(citywideBuilding);
+
     return {
       address: address,
       lat: coords.lat,
@@ -1194,6 +1315,10 @@
         by_use_district: buildingStats,
         overall: allBuildingStats,
         details: buildingLand
+      },
+      citywide: {
+        land_only: { count: citywideLand.length, by_use_district: citywideLandStats, overall: citywideLandOverall },
+        building_land: { count: citywideBuilding.length, by_use_district: citywideBuildingStats, overall: citywideBuildingOverall }
       }
     };
   }
@@ -1217,8 +1342,8 @@
       var result = await analyze(apiKey, address);
 
       renderSummary(result);
-      renderStatsTable(landOnlyContent, result.land_only.by_use_district, result.land_only.overall, false, result.land_only.details);
-      renderStatsTable(buildingLandContent, result.building_land.by_use_district, result.building_land.overall, true, result.building_land.details);
+      renderStatsTable(landOnlyContent, result.land_only.by_use_district, result.land_only.overall, false, result.land_only.details, result.citywide.land_only, result.municipality);
+      renderStatsTable(buildingLandContent, result.building_land.by_use_district, result.building_land.overall, true, result.building_land.details, result.citywide.building_land, result.municipality);
 
       loading.className = 'loading';
       results.className = 'results active';
