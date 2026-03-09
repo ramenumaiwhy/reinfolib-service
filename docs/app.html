@@ -831,12 +831,7 @@
   function buildCandidateLabel(station) {
     var prefName = getPrefName(station.pref + '000');
     var lines = station.lines ? station.lines.split(',') : [];
-    // JR路線を先頭に表示（地下鉄・私鉄の長い正式名称は後ろへ）
-    lines.sort(function(a, b) {
-      var aSub = (a.indexOf('東京メトロ') >= 0 || a.indexOf('都営') >= 0 || a.indexOf('市営') >= 0 || a.indexOf('大阪メトロ') >= 0 || a.indexOf('名古屋市営') >= 0 || a.indexOf('福岡市営') >= 0 || a.indexOf('モノレール') >= 0) ? 1 : 0;
-      var bSub = (b.indexOf('東京メトロ') >= 0 || b.indexOf('都営') >= 0 || b.indexOf('市営') >= 0 || b.indexOf('大阪メトロ') >= 0 || b.indexOf('名古屋市営') >= 0 || b.indexOf('福岡市営') >= 0 || b.indexOf('モノレール') >= 0) ? 1 : 0;
-      return aSub - bSub;
-    });
+    // 路線順はstations.jsonでJR優先にソート済み
     var lineText = '';
     if (lines.length === 1) {
       lineText = lines[0];
