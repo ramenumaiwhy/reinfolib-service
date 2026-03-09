@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://msearch.gsi.go.jp https://mreversegeocoder.gsi.go.jp https://reinfolib-proxy.southern-a-22.workers.dev; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://msearch.gsi.go.jp https://mreversegeocoder.gsi.go.jp https://reinfolib-proxy.southern-a-22.workers.dev; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:;">
 <title>不動産相場チェッカー Web版</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -518,6 +518,77 @@
     .btn-group { flex-direction: column; }
     .btn { width: 100%; justify-content: center; }
   }
+
+  /* --- Search Mode Tabs --- */
+  .search-mode-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid var(--cream-dark);
+  }
+  .search-mode-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: var(--cream);
+    color: var(--brown-warm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .search-mode-tab:not(:last-child) {
+    border-right: 1.5px solid var(--cream-dark);
+  }
+  .search-mode-tab.active {
+    background: var(--terracotta);
+    color: #fff;
+  }
+  .search-mode-tab:hover:not(.active) {
+    background: var(--cream-dark);
+  }
+
+  /* --- Station Search --- */
+  .station-input-wrap {
+    position: relative;
+  }
+  .station-candidates {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1.5px solid var(--cream-dark);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    box-shadow: var(--shadow-md);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  .station-candidates.open {
+    display: block;
+  }
+  .station-candidate {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--brown-deep);
+    transition: background 0.15s;
+    border-bottom: 1px solid var(--cream-dark);
+  }
+  .station-candidate:last-child {
+    border-bottom: none;
+  }
+  .station-candidate:hover,
+  .station-candidate.highlighted {
+    background: var(--gold-pale);
+    color: var(--terracotta);
+  }
 </style>
 </head>
 <body>
@@ -556,16 +627,38 @@
     </div>
   </div>
 
-  <!-- 住所入力 -->
+  <!-- 検索カード -->
   <div class="card" id="searchCard">
     <div class="card-title">
       <span class="icon">&#128269;</span>
-      住所で相場を検索
+      相場を検索
     </div>
-    <div class="input-row">
-      <label for="addressInput">分析したい住所</label>
-      <input type="text" id="addressInput" placeholder="例: 渋谷区恵比寿1丁目">
-      <div class="input-hint">町名まで入力すると精度が上がります。番地は不要です。</div>
+
+    <!-- 検索モード切り替え -->
+    <div class="search-mode-tabs">
+      <button class="search-mode-tab active" data-mode="address">住所で検索</button>
+      <button class="search-mode-tab" data-mode="station">駅名で検索</button>
+    </div>
+
+    <!-- 住所検索エリア -->
+    <div class="search-area" id="addressSearchArea">
+      <div class="input-row">
+        <label for="addressInput">分析したい住所</label>
+        <input type="text" id="addressInput" placeholder="例: 渋谷区恵比寿1丁目">
+        <div class="input-hint">町名まで入力すると精度が上がります。番地は不要です。</div>
+      </div>
+    </div>
+
+    <!-- 駅名検索エリア -->
+    <div class="search-area" id="stationSearchArea" style="display:none">
+      <div class="input-row">
+        <label for="stationInput">駅名</label>
+        <div class="station-input-wrap">
+          <input type="text" id="stationInput" placeholder="例: 渋谷" autocomplete="off">
+          <div class="station-candidates" id="stationCandidates"></div>
+        </div>
+        <div class="input-hint">2文字以上入力すると候補が表示されます</div>
+      </div>
     </div>
 
     <!-- 用途地域フィルタ（任意） -->
@@ -680,6 +773,191 @@
   var buildingLandContent = document.getElementById('buildingLandContent');
   var zoningCategorySelect = document.getElementById('zoningCategory');
   var zoningDetailDiv = document.getElementById('zoningDetail');
+  var stationInput = document.getElementById('stationInput');
+  var stationCandidatesDiv = document.getElementById('stationCandidates');
+  var addressSearchArea = document.getElementById('addressSearchArea');
+  var stationSearchArea = document.getElementById('stationSearchArea');
+  var searchModeTabs = document.querySelectorAll('.search-mode-tab');
+
+  // ─── 検索モード ──────────────────────────────────
+  var searchMode = 'address';
+  var selectedStation = null;
+
+  for (var ti = 0; ti < searchModeTabs.length; ti++) {
+    (function(tab) {
+      tab.addEventListener('click', function() {
+        var mode = tab.getAttribute('data-mode');
+        searchMode = mode;
+        for (var i = 0; i < searchModeTabs.length; i++) {
+          searchModeTabs[i].className = 'search-mode-tab';
+        }
+        tab.className = 'search-mode-tab active';
+        if (mode === 'address') {
+          addressSearchArea.style.display = '';
+          stationSearchArea.style.display = 'none';
+        } else {
+          addressSearchArea.style.display = 'none';
+          stationSearchArea.style.display = '';
+        }
+      });
+    })(searchModeTabs[ti]);
+  }
+
+  // ─── 駅データ遅延ロード ──────────────────────────
+  var stationsData = null;
+  var stationsLoading = false;
+
+  async function loadStations() {
+    if (stationsData) return stationsData;
+    if (stationsLoading) {
+      // ロード中は完了を待つ
+      var waited = 0;
+      while (stationsLoading && waited < 10000) {
+        await sleep(100);
+        waited += 100;
+      }
+      return stationsData;
+    }
+    stationsLoading = true;
+    var resp = await fetch('stations.json');
+    stationsData = await resp.json();
+    stationsLoading = false;
+    return stationsData;
+  }
+
+  // ─── 駅名インクリメンタルサーチ ──────────────────
+  var highlightedIndex = -1;
+
+  function buildCandidateLabel(station) {
+    var prefName = getPrefName(station.pref + '000');
+    var lines = station.lines ? station.lines.split(',') : [];
+    var lineText = '';
+    if (lines.length === 1) {
+      lineText = lines[0];
+    } else if (lines.length === 2) {
+      lineText = lines[0] + ' 他1路線';
+    } else if (lines.length > 2) {
+      lineText = lines[0] + ' 他' + (lines.length - 1) + '路線';
+    }
+    var label = station.name + '（' + prefName;
+    if (lineText) label += '・' + lineText;
+    label += '）';
+    return label;
+  }
+
+  function renderCandidates(stations) {
+    stationCandidatesDiv.textContent = '';
+    highlightedIndex = -1;
+    if (!stations || stations.length === 0) {
+      stationCandidatesDiv.className = 'station-candidates';
+      return;
+    }
+    for (var i = 0; i < stations.length; i++) {
+      (function(station, idx) {
+        var item = createSafeElement('div', buildCandidateLabel(station));
+        item.className = 'station-candidate';
+        item.addEventListener('mousedown', function(e) {
+          e.preventDefault(); // blur を先に発火させない
+          selectStation(station);
+        });
+        stationCandidatesDiv.appendChild(item);
+      })(stations[i], i);
+    }
+    stationCandidatesDiv.className = 'station-candidates open';
+  }
+
+  function selectStation(station) {
+    selectedStation = station;
+    stationInput.value = buildCandidateLabel(station);
+    stationCandidatesDiv.className = 'station-candidates';
+    stationCandidatesDiv.textContent = '';
+    highlightedIndex = -1;
+  }
+
+  function highlightCandidate(index) {
+    var items = stationCandidatesDiv.querySelectorAll('.station-candidate');
+    for (var i = 0; i < items.length; i++) {
+      items[i].className = 'station-candidate';
+    }
+    if (index >= 0 && index < items.length) {
+      items[index].className = 'station-candidate highlighted';
+      highlightedIndex = index;
+    } else {
+      highlightedIndex = -1;
+    }
+  }
+
+  stationInput.addEventListener('input', async function() {
+    var q = stationInput.value.trim();
+    selectedStation = null;
+    if (q.length < 2) {
+      stationCandidatesDiv.className = 'station-candidates';
+      stationCandidatesDiv.textContent = '';
+      return;
+    }
+    var all = await loadStations();
+    // 前方一致を優先、中間一致も含む
+    var prefix = [];
+    var middle = [];
+    for (var i = 0; i < all.length; i++) {
+      var name = all[i].name;
+      if (name.indexOf(q) === 0) {
+        prefix.push(all[i]);
+      } else if (name.indexOf(q) > 0) {
+        middle.push(all[i]);
+      }
+    }
+    var combined = prefix.concat(middle).slice(0, 15);
+    renderCandidates(combined);
+  });
+
+  stationInput.addEventListener('keydown', function(e) {
+    var items = stationCandidatesDiv.querySelectorAll('.station-candidate');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      var next = highlightedIndex + 1;
+      if (next >= items.length) next = 0;
+      highlightCandidate(next);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      var prev = highlightedIndex - 1;
+      if (prev < 0) prev = items.length - 1;
+      highlightCandidate(prev);
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+        e.preventDefault();
+        // データを特定して選択
+        var all = stationsData;
+        if (all) {
+          var q = stationInput.value.trim();
+          var prefix2 = [];
+          var middle2 = [];
+          for (var i = 0; i < all.length; i++) {
+            var nm = all[i].name;
+            if (nm.indexOf(q) === 0) prefix2.push(all[i]);
+            else if (nm.indexOf(q) > 0) middle2.push(all[i]);
+          }
+          var combined2 = prefix2.concat(middle2).slice(0, 15);
+          if (combined2[highlightedIndex]) {
+            selectStation(combined2[highlightedIndex]);
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      stationCandidatesDiv.className = 'station-candidates';
+      stationCandidatesDiv.textContent = '';
+      highlightedIndex = -1;
+    }
+  });
+
+  stationInput.addEventListener('blur', function() {
+    // mousedown で preventDefault しているので候補クリックの後にここは来ない
+    setTimeout(function() {
+      stationCandidatesDiv.className = 'station-candidates';
+      stationCandidatesDiv.textContent = '';
+      highlightedIndex = -1;
+    }, 150);
+  });
 
   // ─── 用途地域フィルタ UI ──────────────────────────
   // 大分類→小分類チップの代表名リスト（各用途地域の正式名称のみ）
@@ -1293,7 +1571,7 @@
 
   function renderSummary(result) {
     resultSummary.textContent = '';
-    var h3 = createSafeElement('h3', result.prefecture + result.municipality + result.district_name + ' の相場');
+    var h3 = createSafeElement('h3', result.scopeLabel || (result.prefecture + result.municipality + result.district_name + ' の相場'));
     resultSummary.appendChild(h3);
 
     var grid = createSafeElement('div');
@@ -1481,28 +1759,23 @@
   }
 
   // ─── メイン分析フロー ──────────────────────────────
-  async function analyze(apiKey, address) {
+
+  // 共通コア処理（住所・駅名どちらからも呼ばれる）
+  async function analyzeCore(apiKey, muniCd, municipality, scopeLabel, districtName) {
     var currentYear = new Date().getFullYear();
     var years = [currentYear, currentYear - 1, currentYear - 2];
-
-    setLoadingText('住所を解析中...');
-    var coords = await geocode(address);
-
-    setLoadingText('市区町村コードを取得中...');
-    var geo = await reverseGeocode(coords.lat, coords.lon);
-
-    var prefecture = getPrefName(geo.muniCd);
-    var districtName = getDistrictName(geo.lv01Nm);
-
-    setLoadingText('市区町村名を取得中...');
-    var municipality = await getCityName(apiKey, geo.muniCd);
-    if (!municipality) throw new Error('市区町村名の取得に失敗しました');
+    var prefecture = getPrefName(muniCd);
 
     setLoadingText('取引データを取得中（3年分）...');
-    var rawData = await fetchTransactions(apiKey, geo.muniCd, years);
+    var rawData = await fetchTransactions(apiKey, muniCd, years);
 
     setLoadingText('データを分析中...');
-    var filtered = filterByDistrict(rawData, prefecture, municipality, districtName);
+    var filtered;
+    if (districtName) {
+      filtered = filterByDistrict(rawData, prefecture, municipality, districtName);
+    } else {
+      filtered = rawData;
+    }
 
     // 土地のみ → 用途地域フィルタ適用
     var landOnly = calcTsuboStats(filtered);
@@ -1518,7 +1791,7 @@
     var buildingStats = summarizeByUseDistrict(buildingLand);
     var allBuildingStats = summarizeStats(buildingLand);
 
-    // 市区町村全体（参考データ: 同一需給圏内の類似地域に相当）→ 同じフィルタ適用
+    // 市区町村全体（参考データ）→ 同じフィルタ適用
     var citywideLand = filterByZoning(removeOutliers(calcTsuboStats(rawData)));
     var citywideLandStats = summarizeByUseDistrict(citywideLand);
     var citywideLandOverall = summarizeStats(citywideLand);
@@ -1527,13 +1800,11 @@
     var citywideBuildingOverall = summarizeStats(citywideBuilding);
 
     return {
-      address: address,
-      lat: coords.lat,
-      lon: coords.lon,
+      scopeLabel: scopeLabel,
       prefecture: prefecture,
       municipality: municipality,
-      district_name: districtName,
-      muni_cd: geo.muniCd,
+      district_name: districtName || '',
+      muni_cd: muniCd,
       years: years,
       total_records: rawData.length,
       filtered_records: filtered.length,
@@ -1556,23 +1827,73 @@
     };
   }
 
+  // 住所検索
+  async function analyzeByAddress(apiKey, address) {
+    setLoadingText('住所を解析中...');
+    var coords = await geocode(address);
+
+    setLoadingText('市区町村コードを取得中...');
+    var geo = await reverseGeocode(coords.lat, coords.lon);
+
+    var prefecture = getPrefName(geo.muniCd);
+    var districtName = getDistrictName(geo.lv01Nm);
+
+    setLoadingText('市区町村名を取得中...');
+    var municipality = await getCityName(apiKey, geo.muniCd);
+    if (!municipality) throw new Error('市区町村名の取得に失敗しました');
+
+    var scopeLabel = prefecture + municipality + districtName + ' の相場';
+    return analyzeCore(apiKey, geo.muniCd, municipality, scopeLabel, districtName);
+  }
+
+  // 駅名検索
+  async function analyzeByStation(apiKey, station) {
+    setLoadingText('市区町村名を取得中...');
+    var municipality = await getCityName(apiKey, station.muni);
+    if (!municipality) throw new Error('市区町村名の取得に失敗しました');
+
+    var prefName = getPrefName(station.muni);
+    var scopeLabel = station.name + '駅周辺（' + prefName + municipality + '全体）の相場';
+    return analyzeCore(apiKey, station.muni, municipality, scopeLabel, null);
+  }
+
   function setLoadingText(text) {
     loadingText.textContent = text;
   }
 
   // ─── イベントハンドラ ──────────────────────────────
   analyzeBtn.addEventListener('click', async function() {
-    var address = addressInput.value.trim();
-    if (!address) return;
     var apiKey = getApiKey();
     if (!apiKey) return;
+
+    // 入力バリデーション
+    if (searchMode === 'address') {
+      var address = addressInput.value.trim();
+      if (!address) return;
+    } else {
+      if (!selectedStation) {
+        var errCard2 = document.getElementById('searchCard');
+        var existing2 = errCard2.querySelector('.status');
+        if (existing2) existing2.remove();
+        var errEl2 = createSafeElement('div', '駅を候補から選択してください');
+        errEl2.className = 'status error';
+        errCard2.appendChild(errEl2);
+        setTimeout(function() { errEl2.remove(); }, 5000);
+        return;
+      }
+    }
 
     analyzeBtn.disabled = true;
     loading.className = 'loading active';
     results.className = 'results';
 
     try {
-      var result = await analyze(apiKey, address);
+      var result;
+      if (searchMode === 'address') {
+        result = await analyzeByAddress(apiKey, addressInput.value.trim());
+      } else {
+        result = await analyzeByStation(apiKey, selectedStation);
+      }
 
       renderSummary(result);
       renderStatsTable(landOnlyContent, result.land_only.by_use_district, result.land_only.overall, false, result.land_only.details, result.citywide.land_only, result.municipality);
@@ -1595,7 +1916,7 @@
     analyzeBtn.disabled = false;
   });
 
-  // Enter キーで分析実行
+  // Enter キーで分析実行（住所モードのみ）
   addressInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !analyzeBtn.disabled) {
       analyzeBtn.click();
