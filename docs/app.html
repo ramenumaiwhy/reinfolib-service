@@ -887,7 +887,17 @@
     }
   }
 
+  // IME変換中フラグ（Mac日本語入力対応）
+  var isComposing = false;
+  stationInput.addEventListener('compositionstart', function() { isComposing = true; });
+  stationInput.addEventListener('compositionend', function() {
+    isComposing = false;
+    // 変換確定後に検索を発火
+    stationInput.dispatchEvent(new Event('input'));
+  });
+
   stationInput.addEventListener('input', async function() {
+    if (isComposing) return; // IME変換中は何もしない
     var q = stationInput.value.trim();
     selectedStation = null;
     if (q.length < 2) {
