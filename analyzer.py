@@ -118,12 +118,12 @@ def get_city_name(api_key: str, muni_cd: str) -> str | None:
 
 def fetch_transactions(
     api_key: str, muni_cd: str, years: list[int]
-) -> list[dict]:
-    """XIT001 API を呼び出して取引データを取得（複数年分を結合）
+) -> dict[int, list[dict] | None]:
+    """XIT001 の応答を検索年ごとに返す。
 
-    まだデータが公開されていない年（404）はスキップする。
+    404 は None、取得成功時は空配列を含む取引リスト。
     """
-    all_data = []
+    batches = {}
     for i, year in enumerate(years):
         if i > 0:
             time.sleep(1)  # rate limit 対策
@@ -135,15 +135,35 @@ def fetch_transactions(
             allow_redirects=False,
         )
         if resp.status_code == 404:
+            batches[year] = None
             continue
         resp.raise_for_status()
         result = resp.json()
-        if result and "data" in result:
-            all_data.extend(result["data"])
-    return all_data
+        if not isinstance(result.get("data"), list) or result.get("status", "OK") != "OK":
+            raise ValueError(f"{year}年の取引データを確認できません")
+        batches[year] = result["data"]
+    return batches
 
 
 # ─── データフィルタリング ─────────────────────────────────
+
+
+def year_coverage(batches, land, buildings):
+    land_rows = {id(item["raw"]) for item in land}
+    building_rows = {id(item["raw"]) for item in buildings}
+    coverage = []
+    for year, rows in batches.items():
+        if rows is None:
+            label = "未取得（404）"
+        elif not rows:
+            label = "市区町村の取引0件"
+        else:
+            land_count = sum(id(row) in land_rows for row in rows)
+            building_count = sum(id(row) in building_rows for row in rows)
+            label = f"土地のみ{land_count}件・建物込み{building_count}件"
+        coverage.append(f"{year}年 {label}")
+    return " ／ ".join(coverage)
+
 
 def filter_by_district(
     data: list[dict],
@@ -293,7 +313,7 @@ def calc_tsubo_stats(items: list[dict]) -> list[dict]:
             "trade_price": trade_price,
             "area_m2": area_m2,
             "floor_area_ratio": floor_area_ratio,
-            "use_district": item.get("UseDistrict", ""),
+            "use_district": item.get("UseDistrict") or item.get("CityPlanning") or "",
             "period": item.get("Period", ""),
             "raw": item,
         })
@@ -333,7 +353,7 @@ def calc_building_land_stats(items: list[dict]) -> list[dict]:
             "remaining_ratio": estimation["remaining_ratio"],
             "area_m2": area_m2,
             "floor_area_ratio": floor_area_ratio,
-            "use_district": item.get("UseDistrict", ""),
+            "use_district": item.get("UseDistrict") or item.get("CityPlanning") or "",
             "period": item.get("Period", ""),
             "raw": item,
         })
@@ -419,7 +439,8 @@ def analyze(api_key: str, address: str, years: list[int] | None = None) -> dict:
     district_name = get_district_name(lv01_nm)
 
     # Step 4: 取引データ取得（3年分）
-    raw_data = fetch_transactions(api_key, muni_cd, years)
+    batches = fetch_transactions(api_key, muni_cd, years)
+    raw_data = [row for rows in batches.values() if rows for row in rows]
 
     # Step 5: 地区名でフィルタ
     filtered = filter_by_district(raw_data, prefecture, municipality, district_name)
@@ -447,6 +468,7 @@ def analyze(api_key: str, address: str, years: list[int] | None = None) -> dict:
         "district_name": district_name,
         "muni_cd": muni_cd,
         "years": years,
+        "coverage": year_coverage(batches, land_only, building_land),
         "total_records": len(raw_data),
         "filtered_records": len(filtered),
         "land_only": {
@@ -479,7 +501,8 @@ def generate_report_text(result: dict) -> str:
     lines.append("### 基本情報")
     lines.append(f"- 住所: {result['prefecture']}{result['municipality']}{result['district_name']}")
     lines.append(f"- 座標: ({result['lat']:.6f}, {result['lon']:.6f})")
-    lines.append(f"- 分析対象年: {', '.join(map(str, result['years']))}")
+    lines.append(f"- 検索した年: {', '.join(map(str, result['years']))}")
+    lines.append(f"- 対象地区の集計内訳: {result['coverage']}")
     lines.append(f"- 全取引件数: {result['total_records']}件")
     lines.append(f"- 対象地区の取引件数: {result['filtered_records']}件")
     lines.append("")

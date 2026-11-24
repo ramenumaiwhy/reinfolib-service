@@ -1,3 +1,11 @@
-name = "reinfolib-proxy"
+name = "reinfolib-service"
 main = "src/index.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2025-05-20"
+
+[assets]
+directory = "../docs"
+run_worker_first = ["/api/*"]
+
+[dev]
+ip = "127.0.0.1"
+port = 8787

@@ -1,36 +1,10 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 
 const app = new Hono();
 
 // --- 定数 ---
 const REINFOLIB_API_URL = "https://www.reinfolib.mlit.go.jp/ex-api/external";
 const ALLOWED_ENDPOINTS = ["XIT001", "XIT002"];
-const ALLOWED_ORIGINS = [
-  "https://ramenumaiwhy.github.io",
-  "http://localhost:8000",
-  "http://localhost:3000",
-  "http://127.0.0.1:8000",
-  "http://127.0.0.1:3000",
-];
-
-// --- CORS ミドルウェア ---
-app.use(
-  "/api/*",
-  cors({
-    origin: (origin) => {
-      if (ALLOWED_ORIGINS.includes(origin)) return origin;
-      return "";
-    },
-    allowHeaders: ["Ocp-Apim-Subscription-Key", "Content-Type"],
-    allowMethods: ["GET", "OPTIONS"],
-    maxAge: 86400,
-  })
-);
-
-// --- ヘルスチェック ---
-app.get("/", (c) => c.json({ status: "ok", service: "reinfolib-proxy" }));
-
 // --- API プロキシ ---
 app.get("/api/:endpoint", async (c) => {
   const endpoint = c.req.param("endpoint");
@@ -62,6 +36,7 @@ app.get("/api/:endpoint", async (c) => {
       headers: {
         "Ocp-Apim-Subscription-Key": apiKey,
       },
+      redirect: "manual",
       signal: controller.signal,
     });
   } catch (e) {
@@ -71,6 +46,10 @@ app.get("/api/:endpoint", async (c) => {
     throw e;
   } finally {
     clearTimeout(timeoutId);
+  }
+
+  if (resp.status >= 300 && resp.status < 400) {
+    return c.json({ error: "Unexpected upstream redirect" }, 502);
   }
 
   // レスポンスをそのまま返す

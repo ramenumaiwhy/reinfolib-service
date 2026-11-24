@@ -1,18 +1,20 @@
 {
   "name": "reinfolib-proxy",
+  "type": "module",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "hono": "^4"
+    "hono": "^4.13.21"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4",
-    "wrangler": "^3",
-    "typescript": "^5"
+    "@cloudflare/workers-types": "^5.20261123.1",
+    "typescript": "^5",
+    "wrangler": "^4.167.0"
   }
 }
